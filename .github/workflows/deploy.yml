@@ -1,9 +1,10 @@
 
-name: Deploy SUNDRA EDITS
+name: Deploy SUNDRA EDITS Website
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,46 +12,60 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Extract website ZIP
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract Website ZIP
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' -print -quit)
+
           if [ -z "$ZIP_FILE" ]; then
-            echo "Website ZIP not found"
+            echo "ERROR: Website ZIP not found"
             exit 1
           fi
+
           mkdir site
           unzip -q "$ZIP_FILE" -d site
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: site/package-lock.json
 
-      - name: Build website
+      - name: Install Dependencies
         run: |
           cd site
-          mkdir -p public
-          echo "sundraedits.in" > public/CNAME
           npm ci
+
+      - name: Build Website
+        run: |
+          cd site
           npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload Website
+        uses: actions/upload-pages-artifact@v3
         with:
           path: site/dist
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
+
     steps:
-      - id: deployment
+      - name: Publish Website
+        id: deployment
         uses: actions/deploy-pages@v4
