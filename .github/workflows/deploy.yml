@@ -1,0 +1,56 @@
+
+name: Deploy SUNDRA EDITS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract website ZIP
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' -print -quit)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Website ZIP not found"
+            exit 1
+          fi
+          mkdir site
+          unzip -q "$ZIP_FILE" -d site
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build website
+        run: |
+          cd site
+          mkdir -p public
+          echo "sundraedits.in" > public/CNAME
+          npm ci
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
