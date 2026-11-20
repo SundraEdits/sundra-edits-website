@@ -53,6 +53,13 @@ jobs:
           cd site
           npm run build
 
+      - name: Add SUNDRA EDITS Favicon
+        run: |
+          cp favicon.png site/dist/favicon.png
+          if ! grep -q 'favicon.png' site/dist/index.html; then
+            sed -i 's#</head>#<link rel="icon" type="image/png" href="/favicon.png"></head>#' site/dist/index.html
+          fi
+
       - name: Upload Website
         uses: actions/upload-pages-artifact@v3
         with:
